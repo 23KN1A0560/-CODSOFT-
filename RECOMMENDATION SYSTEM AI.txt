@@ -1,0 +1,170 @@
+import pandas as pd
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+     
+
+# Ratings and movie data (from MovieLens 100k)
+ratings = pd.read_csv("/content/u.data", sep='\t', names=["user_id", "movie_id", "rating", "timestamp"])
+movies = pd.read_csv("/content/u.item", sep='|', encoding='latin-1', names=["movie_id", "title"], usecols=[0, 1])
+
+# Merge data
+df = pd.merge(ratings, movies, on='movie_id')
+df.head()
+     
+user_id	movie_id	rating	timestamp	title
+0	196	242	3	881250949	Kolya (1996)
+1	186	302	3	891717742	L.A. Confidential (1997)
+2	22	377	1	878887116	Heavyweights (1994)
+3	244	51	2	880606923	Legends of the Fall (1994)
+4	166	346	1	886397596	Jackie Brown (1997)
+
+from google.colab import drive
+drive.mount('/content/drive')
+     
+
+user_movie_matrix = df.pivot_table(index='user_id', columns='title', values='rating')
+
+     
+
+# Select target movie
+target_movie = user_movie_matrix["Toy Story (1995)"]
+
+# Correlation with other movies
+similar_movies = user_movie_matrix.corrwith(target_movie)
+corr_df = pd.DataFrame(similar_movies, columns=["Correlation"])
+corr_df.dropna(inplace=True)
+
+# Add number of ratings
+movie_rating_count = df.groupby('title')['rating'].count()
+corr_df = corr_df.join(movie_rating_count)
+
+# Filter and recommend
+recommendations = corr_df[corr_df['rating'] > 100].sort_values('Correlation', ascending=False).head(10)
+print(recommendations)
+
+     
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2914: RuntimeWarning: Degrees of freedom <= 0 for slice
+  c = cov(x, y, rowvar, dtype=dtype)
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2773: RuntimeWarning: divide by zero encountered in divide
+  c *= np.true_divide(1, fact)
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2773: RuntimeWarning: invalid value encountered in multiply
+  c *= np.true_divide(1, fact)
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2922: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2923: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[None, :]
+                               Correlation  rating
+title                                             
+Toy Story (1995)                  1.000000     452
+Craft, The (1996)                 0.549100     104
+Down Periscope (1996)             0.457995     101
+Miracle on 34th Street (1994)     0.456291     101
+G.I. Jane (1997)                  0.454756     175
+Amistad (1997)                    0.449915     124
+Beauty and the Beast (1991)       0.442960     202
+Mask, The (1994)                  0.432855     129
+Cinderella (1950)                 0.428372     129
+That Thing You Do! (1996)         0.427936     176
+
+# Sample content (use genre or synopsis for real data)
+movie_content = pd.DataFrame({
+    'title': ['Toy Story', 'Jumanji', 'Heat'],
+    'description': ['animation adventure fantasy', 'adventure children fantasy', 'crime drama thriller']
+})
+
+# TF-IDF vectorizer
+tfidf = TfidfVectorizer()
+tfidf_matrix = tfidf.fit_transform(movie_content['description'])
+
+# Compute cosine similarity
+cosine_sim = cosine_similarity(tfidf_matrix)
+
+# Recommend similar to "Toy Story"
+index = movie_content[movie_content['title'] == 'Toy Story'].index[0]
+similar_indices = cosine_sim[index].argsort()[::-1][1:4]
+
+# Show similar movies
+recommended = movie_content.iloc[similar_indices]
+print(recommended)
+
+     
+     title                 description
+1  Jumanji  adventure children fantasy
+2     Heat        crime drama thriller
+
+import pandas as pd
+
+# Load ratings data
+ratings_cols = ['user_id', 'movie_id', 'rating', 'timestamp']
+ratings = pd.read_csv('u.data', sep='\t', names=ratings_cols, encoding='latin-1')
+
+# Load movie titles
+movies_cols = ['movie_id', 'title', 'release_date', 'video_release_date', 'IMDb_URL',
+               'unknown', 'Action', 'Adventure', 'Animation', 'Children', 'Comedy',
+               'Crime', 'Documentary', 'Drama', 'Fantasy', 'Film-Noir', 'Horror',
+               'Musical', 'Mystery', 'Romance', 'Sci-Fi', 'Thriller', 'War', 'Western']
+movies = pd.read_csv('u.item', sep='|', names=movies_cols, usecols=[0, 1], encoding='latin-1')
+
+# Merge the datasets
+df = pd.merge(ratings, movies, on='movie_id')
+
+# Create a user-movie ratings matrix (pivot table)
+ratings_matrix = df.pivot_table(index='user_id', columns='title', values='rating')
+
+# Select ratings for "Toy Story (1995)"
+toy_story_ratings = ratings_matrix["Toy Story (1995)"]
+
+# Compute correlations of all movies with "Toy Story (1995)"
+movie_correlations = ratings_matrix.corrwith(toy_story_ratings)
+
+# Drop NaNs and convert to a dataframe
+corr_df = pd.DataFrame(movie_correlations, columns=['correlation'])
+corr_df.dropna(inplace=True)
+
+# Add number of ratings for each movie
+movie_stats = df.groupby('title')['rating'].agg(['mean', 'count'])
+corr_df = corr_df.join(movie_stats)
+
+# Filter by movies with a minimum number of ratings (e.g., 50)
+top_similar = corr_df[corr_df['count'] > 50].sort_values('correlation', ascending=False)
+
+# Display top similar movies to "Toy Story (1995)"
+print("Top movies similar to 'Toy Story (1995)':")
+print(top_similar.head(10))
+
+     
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2914: RuntimeWarning: Degrees of freedom <= 0 for slice
+  c = cov(x, y, rowvar, dtype=dtype)
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2773: RuntimeWarning: divide by zero encountered in divide
+  c *= np.true_divide(1, fact)
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2773: RuntimeWarning: invalid value encountered in multiply
+  c *= np.true_divide(1, fact)
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2922: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2923: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[None, :]
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2914: RuntimeWarning: Degrees of freedom <= 0 for slice
+  c = cov(x, y, rowvar, dtype=dtype)
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2773: RuntimeWarning: divide by zero encountered in divide
+  c *= np.true_divide(1, fact)
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2773: RuntimeWarning: invalid value encountered in multiply
+  c *= np.true_divide(1, fact)
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2922: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+/usr/local/lib/python3.11/dist-packages/numpy/lib/_function_base_impl.py:2923: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[None, :]
+Top movies similar to 'Toy Story (1995)':
+                                             correlation      mean  count
+title                                                                    
+Toy Story (1995)                                1.000000  3.878319    452
+Raise the Red Lantern (1991)                    0.641535  4.155172     58
+Flubber (1997)                                  0.558389  2.754717     53
+Jackal, The (1997)                              0.557876  3.149425     87
+Craft, The (1996)                               0.549100  3.115385    104
+Island of Dr. Moreau, The (1996)                0.490491  2.157895     57
+Notorious (1946)                                0.486031  4.115385     52
+Cyrano de Bergerac (1990)                       0.480052  3.818182     66
+Beautician and the Beast, The (1997)            0.466064  2.313953     86
+Winnie the Pooh and the Blustery Day (1968)     0.463056  3.800000     75
